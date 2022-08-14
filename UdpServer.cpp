@@ -1,6 +1,7 @@
 #include "socket.h"
 #include "network.h"
 #include "udp_test.h"
+#include "log.h"
 #include <iostream>
 
 #define MAX_LISTEN 5
