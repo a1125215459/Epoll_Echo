@@ -25,7 +25,7 @@ public:
     virtual void OnRead() = 0;
     virtual void OnWrite() = 0;
 
-    void** __poll_ptr;
+    // void** __poll_ptr;
 };
 
 //Poll接口

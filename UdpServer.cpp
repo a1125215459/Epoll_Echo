@@ -4,7 +4,7 @@
 #include "log.h"
 #include <iostream>
 
-#define MAX_LISTEN 5
+// #define MAX_LISTEN 5
 using namespace QPPUtils;
 
 int main(int argc, char *argv[])
@@ -21,8 +21,9 @@ int main(int argc, char *argv[])
         log_error("create epoll fd error");
         return -1;
     }
+    log_info("new UDPServer");
     new UDPServer(Ip);
-
+    log_info("Go to Loop");
     while(1){
         nr->Loop();
     }

@@ -1,6 +1,7 @@
 #include "socket.h"
 #include "network.h"
 #include "tcp_test.h"
+#include "log.h"
 
 using namespace QPPUtils;
 

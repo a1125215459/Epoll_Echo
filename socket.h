@@ -5,13 +5,27 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include "log.h"
 #include "define.h"
 
 #define IP_HEAD_SIZE     20
 #define IP_UDP_HEAD_SIZE 28
 #define IP_TCP_HEAD_SIZE 40
 #define closesocket close
+#define NET_EINTR EINTR
+#define NET_ERRNO errno
+#define NET_CONNECT_INPROGRESS EINPROGRESS
+#define NET_EBADF EBADF
+#define NET_EAGAIN EAGAIN
+
+bool socket_set_nonblock(int s);
+
+#define socket_set_opt setsockopt
 
 typedef uint32_t ip_t;
 typedef uint16_t port_t;
@@ -59,14 +73,14 @@ namespace QPPUtils {
 class IP {
 public:
     explicit IP();
-    explicit IP(const sockaddr *addr);
+    explicit IP(const sockaddr_in *addr);
     explicit IP(const char *ip, int port);
     explicit IP(ip_t ip, int port);
 
     bool Equals(IP &ip);
     bool IsEmpty();
     void Clear();
-    sockaddr GetSockAddr();
+    sockaddr_in GetSockAddr();
     int GetSockAddrLen();
 
     void IP2Str(char *buf, int len);
@@ -140,7 +154,7 @@ public:
     static TCPListenSocket AttachFD(int fd);
     TCPListenSocket();
 
-    TCPSocket Accept(IP *ip);
+    int Accept(IP *ip);
 private:
     TCPListenSocket(int fd);
 };

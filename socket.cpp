@@ -2,16 +2,21 @@
 #include <string.h>
 #include <errno.h>
 
+
 #ifdef _WIN32
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
 
+
 #include "socket.h"
 #include "log.h"
-#include "utils.h"
+// #include "utils.h"
+int __g_qpp_log_level = QPP_LOG_DEBUG;
 
-#define NET_ERRNO errno
+bool socket_set_nonblock(int s) {
+    return fcntl(s, F_SETFL, fcntl(s, F_GETFL, 0) | O_NONBLOCK) != -1;
+}
 
 #ifdef _WIN32
 #define qpp_connect connect
@@ -201,23 +206,23 @@ int get_local_port(int fd) {
 /*
  * 参数 fd:由android分配释放.同时由android设置VPN保护标志.
  */
-int networkCheck(int fd) {
-    log_debug("set netstat detect fd:%d", fd);
-    if(fd < 0) {
-        return -1;
-    }
-    UDPSocket us = UDPSocket::AttachFD(fd);
-    //这里目的iP不重要，所以随便写死一个
-    DEF_FAKE_IP(fip, "122_224_73_165");
-    IP ip(fip, 222);
-    int n = us.Sendto("", 1, ip);
+// int networkCheck(int fd) {
+//     log_debug("set netstat detect fd:%d", fd);
+//     if(fd < 0) {
+//         return -1;
+//     }
+//     UDPSocket us = UDPSocket::AttachFD(fd);
+//     //这里目的iP不重要，所以随便写死一个
+//     DEF_FAKE_IP(fip, "122_224_73_165");
+//     IP ip(fip, 222);
+//     int n = us.Sendto("", 1, ip);
 
-    if(n < 0) {
-        return -1;
-    }
+//     if(n < 0) {
+//         return -1;
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
 bool is_valid_fd(int fd) {
     socklen_t l = sizeof(int);
@@ -561,23 +566,26 @@ TCPListenSocket TCPListenSocket::AttachFD(int fd) {
     return TCPListenSocket(fd);
 }
 
-TCPSocket TCPListenSocket::Accept(IP *ip) {
+int TCPListenSocket::Accept(IP *ip) {
     sockaddr_in addr;
     socklen_t addr_len = sizeof(addr);
     int new_fd = accept(this->fd, (sockaddr*)&addr, &addr_len);
     if (new_fd == INVALID_FD)
-        return TCPSocket();
+        // return TCPSocket();
+        return -1;
 
     if (!socket_set_nonblock(new_fd)) {
         log_info("set fd:%d noblock error", new_fd);
         CLOSE(new_fd);
-        return TCPSocket();
+        // return TCPSocket();
+        return -1;
     }
 
     *ip = IP(&addr);
     int flag = 1;
     setsockopt(new_fd, IPPROTO_TCP, TCP_NODELAY, (const char*)&flag, sizeof(int));
-    return TCPSocket::AttachFD(new_fd);
+    // return TCPSocket::AttachFD(new_fd);
+    return this->GetFD();
 }
 #endif
 

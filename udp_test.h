@@ -9,24 +9,24 @@
 using namespace QPPUtils;
 // using namespace QPP;
 
-class TestRunnable {
-public:
-    virtual void Run() = 0;
-    virtual ~TestRunnable() {}
-};
+// class TestRunnable {
+// public:
+//     virtual void Run() = 0;
+//     virtual ~TestRunnable() {}
+// };
 
 
 
-class UDPClient: public INetworkTask,
-                 public TestRunnable {
+class UDPClient: public INetworkTask {
 public:
     UDPClient(IP ip) {
         this->ip = ip;
         this->s = UDPSocket::Create();
-        this->last_ms = 0;
+        log_info("UDPClient Create");
         if (!NetworkPoller::GetInstance()->Register(this->s.GetFD(), this, true, false)) {
             log_info("register error");
         }
+        log_info("NetworkPoller create succ");
     }
 
     virtual ~UDPClient() {
@@ -36,14 +36,7 @@ public:
         this->s.Close();
     }
 
-    virtual void Run() {
-        uint64_t cur_ms;
-        CURRENT_MS(cur_ms);
-        if (cur_ms - this->last_ms > 50)
-            this->last_ms = cur_ms;
-        else
-            return;
-        
+    virtual void Run() {     
         char udpbuf[100];
         *((uint32_t*)udpbuf) = ip.ip;
         *((uint16_t*)(udpbuf+4)) = htons(ip.port);
@@ -71,17 +64,19 @@ public:
 private:
     UDPSocket s;
     int exe_count;
-    uint64_t last_ms;    
     IP ip;
 };
 
 class UDPServer: public INetworkTask {
 public:
     UDPServer(IP ip) {
+        this->ip = ip;
         this->s = UDPSocket::Listen(ip);
+        log_info("UDPServer Listen");
         if (!NetworkPoller::GetInstance()->Register(this->s.GetFD(), this, true, false)) {
             log_info("register error");
         }
+        log_info("NetworkPoller Register succ!");
     }
 
     ~UDPServer() {
@@ -94,15 +89,16 @@ public:
     virtual void OnRead() {
         char buf[32 * 1024];
         int n = 0;
-        IP recv_ip;
-        while ((n = this->s.Recvfrom(buf, sizeof(buf), &recv_ip)) != -1) {
+        // IP recv_ip;
+        log_info("Start OnRead");
+        while ((n = this->s.Recvfrom(buf, sizeof(buf), &ip)) != -1) {
             ip_t ip = *((uint32_t*)buf);
             int port = ntohs(*((uint32_t*)(buf+4)));
             IP dip(ip, port);
             IP2STR(dip, ip_str);
             log_info("server recv %s %d %s:%d", buf, n, ip_str, port);
 
-            this->s.Sendto(buf, n, recv_ip);
+            this->s.Sendto(buf, n, this->ip);
         }
     }
     
@@ -110,6 +106,7 @@ public:
     }
 private:
     UDPSocket s;
+    IP ip;
 };
 
 
