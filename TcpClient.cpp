@@ -19,4 +19,5 @@ int main(int argc, char *argv[]){
     }
     delete t;
     t = nullptr;
+    return 0;
 }

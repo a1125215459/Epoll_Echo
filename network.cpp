@@ -36,7 +36,7 @@ Epoll::Epoll():epoll_fd(INVALID_FD), max_fd(0), wait_interval(5), events(NULL) {
 
 Epoll::~Epoll() {
     if (this->epoll_fd != INVALID_FD)
-        close(this->epoll_fd);
+        CLOSE(this->epoll_fd);
     if (this->events)
         FREE(this->events);
 }
@@ -49,8 +49,8 @@ bool Epoll::Init(int max_fd, int interval) {
     if (this->epoll_fd == INVALID_FD)
         return false;
 
-    // this->wait_interval = interval;
-    // this->max_fd = max_fd;
+    this->wait_interval = interval;
+    this->max_fd = max_fd;
     this->events = (struct epoll_event*)malloc(sizeof(struct epoll_event) * max_fd);
 
     return true;
@@ -82,24 +82,28 @@ int Epoll::Ctl(int fd, int type, int filter, INetworkTask* task) {
 }
 
 void Epoll::Step() {
+    // log_info("here is Step");
     int nfds = epoll_wait(this->epoll_fd,
                           this->events, this->max_fd, this->wait_interval);
-    for (int i = 0; i < nfds; i++) {
-        //TODO: 后面考虑是否有效率更高的做法
-        epoll_event *e = &events[i];
-        INetworkTask *t = (INetworkTask*)e->data.ptr;
+    // for (int i = 0; i < nfds; i++) {
+    //     //TODO: 后面考虑是否有效率更高的做法
+    //     epoll_event *e = &events[i];
+    //     INetworkTask *t = (INetworkTask*)e->data.ptr;
         // t->__poll_ptr = &e->data.ptr;
-    }
-
+    // }
+    // if (nfds > 0){
+    //     log_info("nfds is %d", nfds);    
+    // }
     for (int i = 0; i < nfds; i++) {
         epoll_event *e = &events[i];
         INetworkTask *t = (INetworkTask*)e->data.ptr;
-        if (t == NULL)
-            continue;
+        // if (t == NULL)
+        //     continue;
         // else
             // t->__poll_ptr = NULL;
 
         if (e->events & EPOLLIN) {
+            // log_info("next is t->OnRead");
             t->OnRead();
         } else if (e->events & EPOLLOUT) {
             t->OnWrite();
@@ -130,6 +134,7 @@ bool NetworkPoller::Init(int max_fd, int interval) {
 #else
 #error "Not implement yet!"
 #endif
+    log_info("NetworkPoller Init succ");
     return impl ? impl->Init(max_fd, interval) : false;
 }
 

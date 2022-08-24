@@ -25,8 +25,8 @@ int main(int argc, char *argv[])
     new UDPServer(Ip);
     log_info("Go to Loop");
     while(1){
+        // log_info("here is while to nr->Loop()");
         nr->Loop();
-    }
-    
-
+    }  
+    return 0;
 }

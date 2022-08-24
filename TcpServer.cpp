@@ -1,11 +1,13 @@
 #include "socket.h"
 #include "network.h"
 #include "tcp_test.h"
+#include "log.h"
+#include <iostream>
 
 using namespace QPPUtils;
 
 int main(int argc, char *argv[]){
-    if(argc != 3)
+    if(argc != 3){
         printf("Usage: %s IP Port \n", argv[0]);
         return  -1;
     }
@@ -18,7 +20,7 @@ int main(int argc, char *argv[]){
     log_info("start*******************************");
     log_info("create NetworkPoller succ");
     
-    TCPSrv *ptr = new TCPSrv(IP(argv[1], atoi(argv[2])));
+    TCPServer *ptr = new TCPServer(IP(argv[1], atoi(argv[2])));
     log_info("create new TCPSrv succ");
     while(1){
         nr->Loop();

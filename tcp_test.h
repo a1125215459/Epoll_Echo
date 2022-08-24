@@ -5,69 +5,116 @@
 // #include "qpp/qpp.h"
 #include "log.h"
 #include "network.h"
+#include "data.h"
+
+#define MAXSIZE 1024
 
 using namespace QPPUtils;
 // using namespace QPP;
 
+// struct Head {
+//     int len;
+//     char cmd;
+//     char body[0];    
+// }__attribute__((packed));
+// // sizeof(Head) = 5;
+
+// class Data{
+// public:
+//     Data(){}
+//     ~Data(){}
+//     // TODO offset
+//     static int writen(int fd, const char *msg, int size){
+//         const char* buf = msg;
+//         int count = size;
+//         while (count > 0)
+//         {
+//             int len = send(fd, buf, count, 0);
+//             if (len == -1)
+//             {
+//                 close(fd);
+//                 return -1;
+//             }
+//             else if (len == 0)
+//             {
+//                 continue;
+//             }
+//             buf += len;
+//             count -= len;
+//         }
+//         return size;
+//     }
+//     // TODO offset
+//     static int readn(int fd, char* buf, int size){
+//         char* ptr = buf;
+//         int count = size;
+//         while (count > 0)
+//         {
+//             int len = recv(fd, ptr, count, 0);
+//             if (len == -1)
+//             {
+//                 return -1;
+//             }
+//             else if (len == 0)
+//             {
+//                 return size - count;
+//             }
+//             ptr += len;
+//             count -= len;
+//         }
+//         return size;
+//     }
+
+//     static const char* packet(char *buf, int len){
+//         // TODO packet
+//     }
+
+//     // can return anything
+//     static const char* unpacket(const char *msg){
+//     // Head* unpacket(const char *msg){
+//         // TODO unpacket --> return data;
+//         Head *head = new Head[sizeof(Head)];    
+//         memcpy(&head->len, msg, sizeof(head->len));
+//         memcpy(&head->cmd, msg, sizeof(head->cmd));
+
+//     }
+// };
+
+
+
 class TCPClient{
 public:
     TCPClient(IP ip) {
-        // this->remote_ip = ip;
-        // this->e = e;
-        // this->t = ClientTCPTask::Connect(e, ip, 5);
-        // this->t->SetEventCallback(this);
-        // this->send_count = 0;
-
-        // this->exe_count = 0;
-        // this->active = false;
-        // this->closed = false;
-
-        // this->last_ms = 0;
+        this->ip = ip;
+        this->s = TCPSocket::Connect(this->ip);
     }
 
     ~TCPClient() {
-        // QPP::FreeTask(this->t);
+        this->s.Close();
     }
 
     virtual void Run() {
-        // if (this->closed)
-            // return;
-        // if (!active)
-            // return;
-
-        // uint64_t cur_ms;
-        // CURRENT_MS(cur_ms);
-        // if (cur_ms - this->last_ms > 20)
-            // this->last_ms = cur_ms;
-        // else
-            // return;
-
-        // if (exe_count == 0) {
-
-    //     }
-
-    //     if (this->exe_count >= 3000) {
-    //         log_info("close");
-    //         this->t->Close();
-    //         this->closed = true;
-    //     }
-    //     this->exe_count++;
-    //     return;
+        char buf[MAXSIZE];
+        fgets(buf, sizeof(buf), stdin);
+        int total_len = strlen(buf);
+        log_info("total_len is : %d", total_len);
+        // TODO packet
+        const char *sendbuf = data.packet(buf, total_len);
+        // int ret = send(this->s.GetFD(), sendbuf, sizeof(sendbuf), 0);
+        int ret = data.writen(this->s.GetFD(), sendbuf, sizeof(sendbuf));
+        if (ret > 0){
+            log_info("send data len is : %d", ret);
+        }
     }
 
-    virtual void OnEvent() {
-
+    virtual void OnRead() {
+        // TODO unpacket
+        // TODO 
     }
 private:
-    // Env *e;
-    // ClientTCPTask *t;
-    // uint64_t last_ms;
-    // int exe_count;
-    // bool active;
-    // bool closed;
-    // IP remote_ip;
-
-    // int send_count;
+    TCPSocket s;
+    IP ip;
+    Data data;
 };
 
 
@@ -75,53 +122,65 @@ private:
 class TCPServer: public INetworkTask {
 public:
     TCPServer(IP ip) {
-        // this->e = e;
-        // this->ul = e->CreateTCPListener(ip);
-        // if (!NetworkPoller::GetInstance()->Register(ul->GetSocket().GetFD(), this, true, false)) {
-        //     log_info("register error");
-        // }
-        // this->recv_total = 0;
+        this->ip = ip;
+        this->s = TCPListenSocket::Listen(ip);
+        if (!NetworkPoller::GetInstance()->Register(this->s.GetFD(), this, true, false)) {
+            log_info("register error");
+        }
+        log_info("TCPServer Create NetworkPoller Succ");
     }
 
     ~TCPServer() {
-        // if (!NetworkPoller::GetInstance()->Unregister(ul->GetSocket().GetFD())) {
-        //     log_info("unregister error");
-        // }
-        // e->FreeTCPListener(this->ul);
+        if (!NetworkPoller::GetInstance()->Unregister(this->s.GetFD())) {
+            log_info("unregister error");
+        }
+        this->s.Close();
     }
 
-    // virtual void OnEvent(Task *t) {
-    //     int n = 0;
-    //     char buf[1024];
-
-    //     while ((n = t->Recv(buf, sizeof(buf))) > 0) {
-    //         this->recv_total += n;
-    //         log_info("recv:%d total:%d", recv_total, n);
-    //         //t->Send(buf, n);
-    //     }
-
-    //     if (n == QPP_CLOSE) 
-    //         t->Close();
-    // }
-
     virtual void OnRead() {
-        // this->ul->OnRecvEvent();
-
-        // // TCPTask *ut = NULL;
-        // while ((ut = this->ul->Accept()) != NULL) {
-        //     ut->SetEventCallback(this);
-        //     log_info("new task %p", ut);
-        // }
+        int newfd = this->s.Accept(&ip);
+        if (newfd > 0){
+            log_info("To new TCPLink");
+            new TCPLink(this->ip, newfd);
+        }
     }
     
     virtual void OnWrite() {
     }
 private:
-    // Env *e;
-    // TCPListener *ul;
-    // int recv_total;
+    TCPListenSocket s;
+    IP ip;
 };
 
+
+class TCPLink: INetworkTask{
+public:
+    TCPLink(IP ip, int fd){
+        this->ip = ip;
+        this->newfd = fd;
+        if (!NetworkPoller::GetInstance()->Register(this->newfd, this, true, false)) {
+            log_info("register error");
+        }
+    }
+    ~TCPLink(){}
+    // TODO OnRead
+    virtual void OnRead(){
+        // TODO recv
+        // TODO unpacket(recv)
+        // TODO Create Cmd
+        // TODO handle 
+
+        // send
+        // TODO send(handle)
+    }
+
+    virtual void OnWrite(){}
+
+private:
+    TCPListenSocket s;
+    IP ip;
+    int newfd;
+};
 
 
 #endif//__TCP_TEST_H__
