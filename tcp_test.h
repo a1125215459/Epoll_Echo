@@ -6,80 +6,11 @@
 #include "log.h"
 #include "network.h"
 #include "data.h"
+#include "cmd.h"
 
 #define MAXSIZE 1024
 
 using namespace QPPUtils;
-// using namespace QPP;
-
-// struct Head {
-//     int len;
-//     char cmd;
-//     char body[0];    
-// }__attribute__((packed));
-// // sizeof(Head) = 5;
-
-// class Data{
-// public:
-//     Data(){}
-//     ~Data(){}
-//     // TODO offset
-//     static int writen(int fd, const char *msg, int size){
-//         const char* buf = msg;
-//         int count = size;
-//         while (count > 0)
-//         {
-//             int len = send(fd, buf, count, 0);
-//             if (len == -1)
-//             {
-//                 close(fd);
-//                 return -1;
-//             }
-//             else if (len == 0)
-//             {
-//                 continue;
-//             }
-//             buf += len;
-//             count -= len;
-//         }
-//         return size;
-//     }
-//     // TODO offset
-//     static int readn(int fd, char* buf, int size){
-//         char* ptr = buf;
-//         int count = size;
-//         while (count > 0)
-//         {
-//             int len = recv(fd, ptr, count, 0);
-//             if (len == -1)
-//             {
-//                 return -1;
-//             }
-//             else if (len == 0)
-//             {
-//                 return size - count;
-//             }
-//             ptr += len;
-//             count -= len;
-//         }
-//         return size;
-//     }
-
-//     static const char* packet(char *buf, int len){
-//         // TODO packet
-//     }
-
-//     // can return anything
-//     static const char* unpacket(const char *msg){
-//     // Head* unpacket(const char *msg){
-//         // TODO unpacket --> return data;
-//         Head *head = new Head[sizeof(Head)];    
-//         memcpy(&head->len, msg, sizeof(head->len));
-//         memcpy(&head->cmd, msg, sizeof(head->cmd));
-
-//     }
-// };
-
 
 
 class TCPClient{
@@ -96,9 +27,12 @@ public:
     virtual void Run() {
         char buf[MAXSIZE];
         fgets(buf, sizeof(buf), stdin);
+        // total_len don't have itself
+        // total_len = cmd_len + body_len
         int total_len = strlen(buf);
         log_info("total_len is : %d", total_len);
         // TODO packet
+        // sendbuf = total_len + cmd + body
         const char *sendbuf = data.packet(buf, total_len);
         // int ret = send(this->s.GetFD(), sendbuf, sizeof(sendbuf), 0);
         int ret = data.writen(this->s.GetFD(), sendbuf, sizeof(sendbuf));
@@ -108,8 +42,16 @@ public:
     }
 
     virtual void OnRead() {
+        // TODO recv
+        char recvbuf[MAXSIZE];
+        int ret = data.readn(this->s.GetFD(), recvbuf, sizeof(recvbuf));
+        // TODO if ret
+        if (ret > 0){
+            log_info("recv data ret is: %d", ret);
+        }
         // TODO unpacket
-        // TODO 
+        Head *head = data.unpacket(recvbuf);
+        log_info("len is : %d, cmd is %d, data is : %s", head->len, head->cmd, head->body);
     }
 private:
     TCPSocket s;
@@ -127,7 +69,7 @@ public:
         if (!NetworkPoller::GetInstance()->Register(this->s.GetFD(), this, true, false)) {
             log_info("register error");
         }
-        log_info("TCPServer Create NetworkPoller Succ");
+        log_info("Create TCPServer Succ");
     }
 
     ~TCPServer() {
@@ -161,25 +103,48 @@ public:
         if (!NetworkPoller::GetInstance()->Register(this->newfd, this, true, false)) {
             log_info("register error");
         }
+        log_info("Create new TCPLink Succ");
     }
-    ~TCPLink(){}
+    ~TCPLink(){
+        if (!NetworkPoller::GetInstance()->Unregister(this->newfd)) {
+            log_info("unregister error");
+        }
+        // this->s.Close();
+        CLOSE(this->newfd);
+    }
     // TODO OnRead
     virtual void OnRead(){
         // TODO recv
-        // TODO unpacket(recv)
-        // TODO Create Cmd
-        // TODO handle 
+        char recvbuf[MAXSIZE];
+        int ret = data.readn(this->newfd, recvbuf, sizeof(recvbuf));
+        if (ret > 0){
+            log_info("recv data ret is: %d", ret);
+        }
 
-        // send
-        // TODO send(handle)
+        // TODO unpacket(recv)
+        // const char *msg = data.unpacket(recvbuf);
+        // Head *head = data.unpacket(recvbuf);
+
+        // TODO Create Cmd
+        // Cmd *oper = CmdFactory::Create(head->cmd);
+        Cmd *oper = CmdFactory::Create(recvbuf);
+        // TODO handle
+        // char *body = head->body;
+        const char *sendbuf = oper->handle(recvbuf);
+        // TODO send
+        ret = data.writen(this->newfd, sendbuf, sizeof(sendbuf));
+        if (ret > 0){
+            log_info("send data ret is: %d", ret);
+        }
     }
 
     virtual void OnWrite(){}
 
 private:
-    TCPListenSocket s;
-    IP ip;
+    // TCPListenSocket s;
     int newfd;
+    IP ip;
+    Data data;
 };
 
 
